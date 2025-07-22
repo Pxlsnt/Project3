@@ -1,0 +1,86 @@
+
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>แบบฟอร์มยืมอุปกรณ์</title>
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      padding: 40px;
+      background: #f2f2f2;
+      display: flex;
+      justify-content: center;
+    }
+    form {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 600px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background: #1976d2;
+      color: white;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <form onsubmit="handleSubmit(event)">
+    <h2>แบบฟอร์มยืม/คืนอุปกรณ์</h2>
+    <label>ประเภท</label>
+    <select id="type" required>
+      <option value="ยืม">ยืม</option>
+      <option value="คืน">คืน</option>
+    </select>
+
+    <label>ชื่อ</label>
+    <input type="text" id="name" required>
+
+    <label>เบอร์โทร</label>
+    <input type="tel" id="phone" required>
+
+    <label>รายการอุปกรณ์</label>
+    <select id="item" required>
+      <option value="" disabled selected>-- เลือกอุปกรณ์ --</option>
+      <option value="โน้ตบุ๊ก">โน้ตบุ๊ก</option>
+      <option value="โปรเจคเตอร์">โปรเจคเตอร์</option>
+      <option value="สาย HDMI">สาย HDMI</option>
+    </select>
+
+    <label>วันที่</label>
+    <input type="date" id="date" required>
+
+    <button type="submit">ดำเนินการต่อ</button>
+  </form>
+
+  <script>
+    function handleSubmit(event) {
+      event.preventDefault();
+      const data = {
+        type: document.getElementById("type").value,
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        item: document.getElementById("item").value,
+        date: document.getElementById("date").value
+      };
+      localStorage.setItem("borrowData", JSON.stringify(data));
+      window.location.href = "agreement.html";
+    }
+  </script>
+</body>
+</html>

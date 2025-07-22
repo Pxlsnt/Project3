@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>ข้อตกลงการยืมอุปกรณ์</title>
+  <style>
+    body {
+      font-family: 'Prompt', sans-serif;
+      padding: 40px;
+      background: #f2f2f2;
+      display: flex;
+      justify-content: center;
+    }
+    .contract-box {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    h2 {
+      text-align: center;
+      color: #d84315;
+      margin-bottom: 20px;
+    }
+    .info {
+      margin-bottom: 20px;
+      line-height: 1.7;
+    }
+    canvas {
+      border: 1px solid #ccc;
+      width: 100%;
+      height: 120px;
+      margin-bottom: 10px;
+      touch-action: none;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #d84315;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #bf360c;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="contract-box">
+    <h2>ข้อตกลงการยืมอุปกรณ์</h2>
+    <div class="info" id="infoArea"></div>
+
+    <p>ลายเซ็นผู้ยืม:</p>
+    <canvas id="signature" width="600" height="120"></canvas>
+    <button onclick="clearCanvas()">ล้างลายเซ็น</button>
+    <br /><br />
+    <button onclick="submitContract()">ยืนยันและส่งข้อมูล</button>
+  </div>
+
+  <script>
+    const data = JSON.parse(localStorage.getItem("borrowData") || "{}");
+
+    if (!data.name || !data.phone || !data.item || !data.date) {
+      alert("ไม่มีข้อมูลการยืม กรุณากรอกข้อมูลใหม่");
+      window.location.href = "index.html";
+    }
+
+    const infoArea = document.getElementById("infoArea");
+    infoArea.innerHTML = `
+      <strong>ประเภท:</strong> ${data.type}<br>
+      <strong>ชื่อ:</strong> ${data.name}<br>
+      <strong>เบอร์:</strong> ${data.phone}<br>
+      <strong>อุปกรณ์:</strong> ${data.item}<br>
+      <strong>วันที่ยืม:</strong> ${data.date}<br>
+      <hr>
+      ผู้ยืมตกลงที่จะรับผิดชอบต่ออุปกรณ์ที่ยืมไป และจะคืนอุปกรณ์ภายในเวลาที่กำหนด
+    `;
+
+    const canvas = document.getElementById("signature");
+    const ctx = canvas.getContext("2d");
+    let drawing = false;
+
+    // Mouse event
+    canvas.addEventListener("mousedown", () => drawing = true);
+    canvas.addEventListener("mouseup", () => {
+      drawing = false;
+      ctx.beginPath();
+    });
+    canvas.addEventListener("mousemove", draw);
+
+    // Touch event (for mobile)
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      drawing = true;
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    }, false);
+
+    canvas.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      if (!drawing) return;
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches[0];
+      ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    }, false);
+
+    canvas.addEventListener("touchend", () => {
+      drawing = false;
+      ctx.beginPath();
+    });
+
+    function draw(e) {
+      if (!drawing) return;
+      ctx.lineWidth = 2;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = "#000";
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+    }
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function submitContract() {
+      const signature = canvas.toDataURL();
+      const fullData = { ...data, signature };
+
+      fetch("https://script.google.com/macros/s/AKfycbzrPzaQ9IQZLbHEUxpA8NlWfBwswEhEJRAitA9c73p_539WaXPj1ie2PGeBnGKLPI4c/exec", {
+        method: "POST",
+        body: JSON.stringify(fullData),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+      .then(res => {
+        if (res.ok) {
+          alert("ส่งข้อมูลสำเร็จ!");
+          localStorage.clear();
+          window.location.href = "thankyou.html";
+        } else {
+          throw new Error("ส่งไม่สำเร็จ");
+        }
+      })
+      .catch(err => {
+        alert("เกิดข้อผิดพลาด: " + err.message);
+      });
+    }
+  </script>
+
+</body>
+</html>
