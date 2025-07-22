@@ -138,7 +138,7 @@
       const signature = canvas.toDataURL();
       const fullData = { ...data, signature };
 
-      fetch("https://script.google.com/macros/s/AKfycbzrPzaQ9IQZLbHEUxpA8NlWfBwswEhEJRAitA9c73p_539WaXPj1ie2PGeBnGKLPI4c/exec", {
+      fetch('/submit', {
         method: "POST",
         body: JSON.stringify(fullData),
         headers: {
