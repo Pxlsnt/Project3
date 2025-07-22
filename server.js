@@ -21,5 +21,5 @@ app.post("/submit", (req, res) => {
   });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`เซิร์ฟเวอร์จำลองเปิดที่ http://localhost:${PORT}`));
