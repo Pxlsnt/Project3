@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>แบบฟอร์มยืมอุปกรณ์</title>
+  <style>
+    body { font-family: 'Prompt', sans-serif; padding: 40px; background: #f2f2f2; display: flex; justify-content: center;}
+    form { background: white; padding: 30px; border-radius: 15px; width: 100%; max-width: 600px; box-shadow: 0 8px 20px rgba(0,0,0,0.2);}
+    input, select { width: 100%; padding: 10px; margin-bottom: 15px; border-radius: 8px; border: 1px solid #ccc;}
+    label { display: block; margin-bottom: 5px; }
+    .canvas-wrap { margin: 20px 0 10px 0; }
+    canvas { border: 1px solid #ccc; width: 100%; height: 120px; background: #fff; touch-action: none; display: block;}
+    button { width: 100%; padding: 12px; background: #1976d2; color: white; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; margin-bottom: 10px;}
+    button:last-of-type { margin-bottom: 0;}
+    button:disabled { background-color: #aaa; cursor: not-allowed;}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body>
+  <form id="borrowForm" autocomplete="off">
+    <h2>แบบฟอร์มยืม/คืนอุปกรณ์</h2>
+    <label>ประเภท</label>
+    <select id="type" required>
+      <option value="ยืม">ยืม</option>
+      <option value="คืน">คืน</option>
+    </select>
+    <label>ชื่อ</label>
+    <input type="text" id="name" required>
+    <label>เบอร์โทร</label>
+    <input type="tel" id="phone" required>
+    <label>รายการอุปกรณ์</label>
+    <select id="item" required>
+      <option value="" disabled selected>-- เลือกอุปกรณ์ --</option>
+      <option value="โน้ตบุ๊ก">โน้ตบุ๊ก</option>
+      <option value="โปรเจคเตอร์">โปรเจคเตอร์</option>
+      <option value="สาย HDMI">สาย HDMI</option>
+    </select>
+    <label>วันที่</label>
+    <input type="date" id="date" required>
+    <div class="canvas-wrap">
+      <label>ลายเซ็นผู้ยืม (เซ็นในกรอบ):</label>
+      <canvas id="signature" width="600" height="120" style="width:100%;height:120px;"></canvas>
+      <button type="button" onclick="clearCanvas()">ล้างลายเซ็น</button>
+    </div>
+    <button id="submitBtn" type="submit">ส่งข้อมูลเข้า Supabase</button>
+  </form>
+
+  <script>
+    // ======= กำหนดค่า Supabase =======
+    const SUPABASE_URL = "https://script.google.com/macros/s/AKfycbzrPzaQ9IQZLbHEUxpA8NlWfBwswEhEJRAitA9c73p_539WaXPj1ie2PGeBnGKLPI4c/exec  "; // <--- แก้เป็นของคุณ!
+    const SUPABASE_KEY = "AKfycbzrPzaQ9IQZLbHEUxpA8NlWfBwswEhEJRAitA9c73p_539WaXPj1ie2PGeBnGKLPI4c"; // <--- แก้เป็นของคุณ!
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ======= Canvas (เซ็น) =======
+    const canvas = document.getElementById("signature");
+    const ctx = canvas.getContext("2d");
+    let drawing = false, signed = false;
+
+    function getCanvasPos(e) {
+      const rect = canvas.getBoundingClientRect();
+      let x, y;
+      if (e.touches) {
+        x = e.touches[0].clientX - rect.left;
+        y = e.touches[0].clientY - rect.top;
+      } else {
+        x = e.clientX - rect.left;
+        y = e.clientY - rect.top;
+      }
+      // ปรับ scale ให้ตรงกับขนาดจริง
+      x = x * (canvas.width / rect.width);
+      y = y * (canvas.height / rect.height);
+      return { x, y };
+    }
+
+    // Mouse events
+    canvas.addEventListener("mousedown", e => {
+      drawing = true;
+      signed = true;
+      const p = getCanvasPos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+    });
+    canvas.addEventListener("mousemove", e => {
+      if (!drawing) return;
+      const p = getCanvasPos(e);
+      ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.strokeStyle = "#000";
+      ctx.lineTo(p.x, p.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    });
+    canvas.addEventListener("mouseup", () => { drawing = false; ctx.beginPath(); });
+    canvas.addEventListener("mouseleave", () => { drawing = false; ctx.beginPath(); });
+
+    // Touch events (mobile)
+    canvas.addEventListener("touchstart", e => {
+      e.preventDefault();
+      drawing = true;
+      signed = true;
+      const p = getCanvasPos(e);
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+    });
+    canvas.addEventListener("touchmove", e => {
+      e.preventDefault();
+      if (!drawing) return;
+      const p = getCanvasPos(e);
+      ctx.lineWidth = 2; ctx.lineCap = "round"; ctx.strokeStyle = "#000";
+      ctx.lineTo(p.x, p.y); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(p.x, p.y);
+    });
+    canvas.addEventListener("touchend", () => { drawing = false; ctx.beginPath(); });
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      signed = false;
+    }
+
+    // ======= ส่งฟอร์มเข้า Supabase =======
+    document.getElementById("borrowForm").onsubmit = async function(event) {
+      event.preventDefault();
+      if (!signed) {
+        alert("กรุณาเซ็นลายเซ็นในกรอบก่อนส่ง");
+        return;
+      }
+      document.getElementById("submitBtn").disabled = true;
+
+      // --- 1. เก็บข้อมูลฟอร์ม
+      const formData = {
+        type: document.getElementById("type").value,
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        item: document.getElementById("item").value,
+        date: document.getElementById("date").value,
+        created_at: new Date().toISOString()
+      };
+
+      // --- 2. อัปโหลดลายเซ็น PNG เข้า storage
+      const signature = canvas.toDataURL("image/png");
+      const filename = `signatures/${Date.now()}_${Math.floor(Math.random()*10000)}.png`;
+      const blob = await (await fetch(signature)).blob();
+
+      let { error: uploadError } = await supabase
+        .storage.from('signatures')
+        .upload(filename, blob, { contentType: 'image/png' });
+
+      if (uploadError) {
+        alert("อัปโหลดลายเซ็นผิดพลาด: " + uploadError.message);
+        document.getElementById("submitBtn").disabled = false;
+        return;
+      }
+
+      // --- 3. get public URL
+      const { data: publicUrlData } = supabase.storage.from('signatures').getPublicUrl(filename);
+      const signature_url = publicUrlData.publicUrl;
+
+      // --- 4. ส่งข้อมูลเข้า table contracts
+      const { error: insertError } = await supabase
+        .from('contracts')
+        .insert([{ ...formData, signature_url }]);
+
+      if (insertError) {
+        alert("บันทึกข้อมูลไม่สำเร็จ: " + insertError.message);
+        document.getElementById("submitBtn").disabled = false;
+      } else {
+        alert("ส่งข้อมูลสำเร็จ!");
+        document.getElementById("borrowForm").reset();
+        clearCanvas();
+        document.getElementById("submitBtn").disabled = false;
+        signed = false;
+      }
+    }
+  </script>
+</body>
+</html>
